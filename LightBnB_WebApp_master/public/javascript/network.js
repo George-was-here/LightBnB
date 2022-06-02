@@ -51,4 +51,4 @@ const submitProperty = function(data) {
     url: "/api/properties",
     data,
   });
-}
+};

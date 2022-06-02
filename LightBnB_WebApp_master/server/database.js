@@ -98,10 +98,61 @@ const getAllReservations = function(guest_id, limit = 10) {
 
 exports.getAllReservations = getAllReservations;
 
+const buildAllPropertiesQuery = (options) => {
+  const select = 'properties.id, title, cost_per_night, avg(property_reviews.rating) as average_rating, properties.thumbnail_photo_url, properties.cover_photo_url, properties.number_of_bedrooms, properties.number_of_bathrooms, properties.parking_spaces';
+  const from = 'properties';
+  const join = 'property_reviews ON properties.id = property_id';
+  const groupBy = 'properties.id, properties.thumbnail_photo_url, properties.cover_photo_url, properties.number_of_bedrooms, properties.number_of_bathrooms, properties.parking_spaces';
+  const orderBy = 'cost_per_night';
+  const where = [];
+  let having;
+
+  if (options.city) {
+    where.push(`city LIKE '%${options.city}%'`);
+  }
+
+  if (options.minimum_price_per_night) {
+    where.push(`cost_per_night >= ${options.minimum_price_per_night}`);
+  }
+
+  if (options.maximum_price_per_night) {
+    where.push(`cost_per_night <= ${options.maximum_price_per_night}`);
+  }
+
+  if (options.minimum_rating) {
+    having = `AVG(property_reviews.rating) >= ${options.minimum_rating}`;
+  }
+
+  if (options.owner_id) {
+    where.push(`owner_id = ${options.owner_id}`);
+  }
+
+  let query = `SELECT ${select}
+  FROM ${from}
+  LEFT JOIN ${join}`;
+
+  if (where.length > 0) {
+    query += ` WHERE ${where.join(' AND ')}`;
+  }
+
+  query += ` GROUP BY ${groupBy}`;
+
+  if (having) {
+    query += ` HAVING ${having}`;
+  }
+
+  query +=  ` ORDER BY ${orderBy}`;
+
+  query += ' LIMIT $1;';
+
+
+  return query;
+};
+
 /// Properties
 const getAllProperties = (options, limit = 10) => {
   return pool
-    .query(`SELECT * FROM properties LIMIT $1`, [limit])
+    .query(buildAllPropertiesQuery(options), [limit])
     .then((result) => {
       return result.rows;
     })
@@ -110,7 +161,6 @@ const getAllProperties = (options, limit = 10) => {
     });
 };
 exports.getAllProperties = getAllProperties;
-
 
 /**
  * Add a property to the database
