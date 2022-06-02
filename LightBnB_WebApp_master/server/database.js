@@ -1,3 +1,4 @@
+/* eslint-disable camelcase */
 const properties = require('./json/properties.json');
 const { Pool } = require('pg');
 
@@ -80,7 +81,19 @@ exports.addUser = addUser;
  * @return {Promise<[{}]>} A promise to the reservations.
  */
 const getAllReservations = function(guest_id, limit = 10) {
-  return getAllProperties(null, 2);
+  return pool.query(` SELECT reservations.id, properties.title, cost_per_night, reservations.start_date, AVG(property_reviews.rating) AS average_rating, properties.thumbnail_photo_url, properties.cover_photo_url, properties.number_of_bedrooms, properties.number_of_bathrooms, properties.parking_spaces
+  FROM reservations
+  JOIN properties ON properties.id = property_id
+  JOIN property_reviews ON reservations.id = reservation_id
+  WHERE properties.owner_id = $2
+  GROUP BY reservations.id, properties.title, properties.cost_per_night, properties.thumbnail_photo_url, properties.cover_photo_url, properties.number_of_bedrooms, properties.number_of_bathrooms, properties.parking_spaces
+  ORDER BY start_date desc LIMIT $1;`, [limit, guest_id])
+    .then((result) => {
+      return result.rows;
+    })
+    .catch((err) => {
+      console.log(err.message);
+    });
 };
 
 exports.getAllReservations = getAllReservations;
